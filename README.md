@@ -17,3 +17,5 @@ $ yarn polkadot-dev-copy-to signer-test
 $ yarn
 $ yarn start
 ```
+
+if you want to run it with a `Alice` as a keyPair run `yarn start:dev`
