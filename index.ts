@@ -33,7 +33,7 @@ const signer = {
             tokenSymbol: 'DOT'
         });
 
-        const metadataHash = api.registry.createType('Hash', digest.hash());
+        const metadataHash = api.registry.createType('Hash', '0x' + digest.hash());
 
         const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: metadataHash.toHex() });
         const extPay = api.registry.createType('ExtrinsicPayload', newPayload);
