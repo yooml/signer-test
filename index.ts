@@ -1,3 +1,4 @@
+import { promises as fs } from "fs";
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import { Keyring } from '@polkadot/keyring';
 import { ApiPromise, WsProvider } from '@polkadot/api';
@@ -7,44 +8,58 @@ import { objectSpread } from '@polkadot/util';
 import type { SignerPayloadJSON } from '@polkadot/types/types/extrinsic.js';
 import type { u16 } from '@polkadot/types';
 
-const WS_URL = 'ws://127.0.0.1:9944';
+const WS_URL = 'wss://kusama-rpc.polkadot.io';
+// Set for Kusama
+const DECIMALS = 12;
+const TOKEN_SYMBOL = 'KSM';
+
+
+const createKeyPair = async (ss58Format: number) => {
+    const keyPhrase = await fs.readFile('keyphrase.txt', 'utf-8')
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        });
+    const keyring = new Keyring({ type: 'sr25519', ss58Format });
+	const keyPair = keyring.addFromUri(keyPhrase, { name: 'keyPair' });
+    
+    return keyPair;
+}
 
 const signer = {
     signPayload: async (payload: SignerPayloadJSON) => {
         // Initialize Wasm methods
         const mm = await init();
-
-        const keyring = new Keyring();
-        const alice = keyring.addFromUri('//Alice', { name: 'Alice' }, 'sr25519');
     
         const api = await ApiPromise.create({
             provider: new WsProvider(WS_URL)
         });
 
         await api.isReady;
+
+        const keyPair = await createKeyPair((api.consts.system.ss58Prefix as u16).toNumber());
         
         const metadata = await api.call.metadata.metadataAtVersion(15);
         const { specName, specVersion } = await api.rpc.state.getRuntimeVersion();
         const runtimeMetadata = RuntimeMetadata.fromHex(metadata.toHex());
         const digest = mm.generateMetadataDigest(runtimeMetadata, {
             base58Prefix: (api.consts.system.ss58Prefix as u16).toNumber(),
-            decimals: 12,
+            decimals: DECIMALS,
             specName: specName.toString(),
             specVersion: specVersion.toNumber(),
-            tokenSymbol: 'ROC'
+            tokenSymbol: TOKEN_SYMBOL
         });
 
-        const hash = api.registry.createType('Option<[u8;32]>', '0x' + digest.hash());
-        const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: hash });     
+        const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: '0x' + digest.hash() });     
         const signerPayload = api.registry.createType('ExtrinsicPayload', newPayload);
-        const { signature } = signerPayload.sign(alice);
+        const { signature } = signerPayload.sign(keyPair);
         const extrinsic = api.registry.createType(
             'Extrinsic',
             { method: signerPayload.method },
             { version: 4 }
         );
 
-        extrinsic.addSignature(alice.address, signature, signerPayload.toHex());
+        extrinsic.addSignature(keyPair.address, signature, signerPayload.toHex());
 
         return {
             id: 0,
@@ -58,9 +73,6 @@ const signer = {
 const main = async () => {
     await cryptoWaitReady();
 
-    const keyring = new Keyring();
-	const alice = keyring.addFromUri('//Alice', { name: 'Alice' }, 'sr25519');
-
     const api = await ApiPromise.create({
         provider: new WsProvider(WS_URL),
         signer
@@ -68,7 +80,9 @@ const main = async () => {
 
     await api.isReady;
 
-    await api.tx.system.remark('0x00').signAndSend(alice.address);
+    const keyPair = await createKeyPair((api.consts.system.ss58Prefix as u16).toNumber());
+
+    await api.tx.balances.transferKeepAlive('D3R6bYhvjhSfuQs68QvV3JUmFQf6DWgHqQVCFx4JXD253bk', '100000000').signAndSend(keyPair.address);
 }
 
-main().catch(e => console.error(e)).finally(() => process.exit())
+main().catch(e => console.error(e)).finally(() => process.exit());
