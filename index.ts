@@ -24,15 +24,15 @@ const signer = {
         await api.isReady;
         
         const metadata = await api.call.metadata.metadataAtVersion(15);
+        const { specName, specVersion } = await api.rpc.state.getRuntimeVersion();
         const runtimeMetadata = RuntimeMetadata.fromHex(metadata.toHex());
         const digest = mm.generateMetadataDigest(runtimeMetadata, {
             base58Prefix: (api.consts.system.ss58Prefix as u16).toNumber(),
             decimals: 12,
-            specName: 'rococo',
-            specVersion: 1013000,
-            tokenSymbol: 'DOT'
+            specName: specName.toString(),
+            specVersion: specVersion.toNumber(),
+            tokenSymbol: 'ROC'
         });
-
         const metadataHash = api.registry.createType('Hash', '0x' + digest.hash());
 
         const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: metadataHash.toHex() });
