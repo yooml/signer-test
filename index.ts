@@ -48,7 +48,7 @@ const signer = {
         return {
             id: 0,
             signature: signature,
-            // Alice sending funds to Bob
+            // Extrinsic with Mode and MetadataHash added
             signedTransaction: extrinsic.toHex(),
         }
     }
