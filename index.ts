@@ -27,7 +27,7 @@ const createKeyPair = async (ss58Format: number) => {
 }
 
 const createDevKeyPair = (ss58Format: number) => {
-    const keyring = new Keyring();
+    const keyring = new Keyring({ type: 'sr25519', ss58Format });
     return keyring.addFromUri('//Alice', { name: 'Alice' }, 'sr25519');
 }
 
