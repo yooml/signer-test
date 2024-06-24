@@ -33,17 +33,18 @@ const signer = {
             specVersion: specVersion.toNumber(),
             tokenSymbol: 'ROC'
         });
-        const metadataHash = api.registry.createType('Hash', '0x' + digest.hash());
 
-        const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: metadataHash.toHex() });
-        const extPay = api.registry.createType('ExtrinsicPayload', newPayload);
-        const { signature } = extPay.sign(alice);
+        const hash = api.registry.createType('Option<[u8;32]>', '0x' + digest.hash());
+        const newPayload = objectSpread({}, payload, { mode: 1, metadataHash: hash });     
+        const signerPayload = api.registry.createType('ExtrinsicPayload', newPayload);
+        const { signature } = signerPayload.sign(alice);
         const extrinsic = api.registry.createType(
             'Extrinsic',
-            { method: extPay.method },
+            { method: signerPayload.method },
             { version: 4 }
         );
-        extrinsic.addSignature(alice.address, signature, extPay.toHex());
+
+        extrinsic.addSignature(alice.address, signature, signerPayload.toHex());
 
         return {
             id: 0,
